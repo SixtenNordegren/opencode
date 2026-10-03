@@ -8,7 +8,6 @@ import { EMPTY_SESSION_TAB_STATUS, SessionTabs, type SessionTabsController } fro
 import { moveSessionTab, type SessionTab } from "../../src/context/session-tabs-model"
 import { Keymap } from "../../src/context/keymap"
 import { ThemeProvider } from "../../src/context/theme"
-import { SPINNER_FRAMES } from "../../src/component/spinner-frames"
 import { SESSION_TABS_COMPACT_WIDTH } from "../../src/ui/layout"
 import { emptyThemeSource } from "../fixture/fixture"
 import { TestTuiContexts } from "../fixture/tui-environment"
@@ -90,7 +89,7 @@ test("compact rail renders and controls session tabs", async () => {
     ).toBe(TextAttributes.BOLD)
 
     setStatus({ ...EMPTY_SESSION_TAB_STATUS, busy: true })
-    await app.waitForFrame((frame) => frame.split("\n")[5].slice(0, 5).trim() === SPINNER_FRAMES[0])
+    await app.waitForFrame((frame) => frame.split("\n")[5].slice(0, 5).trim() === "▛")
     setStatus({ ...EMPTY_SESSION_TAB_STATUS, busy: true, attention: "question" })
     await app.waitForFrame((frame) => frame.split("\n")[5].slice(0, 5).trim() === "?")
 
