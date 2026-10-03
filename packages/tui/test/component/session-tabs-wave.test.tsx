@@ -16,7 +16,7 @@ import { ThemeProvider, useTheme, useThemes } from "../../src/context/theme"
 import { getOpenCodeTheme } from "../../src/theme"
 import { createTuiResolvedConfig } from "../fixture/tui-runtime"
 
-const titles = ["First", "Other"]
+const titles = ["First session", "Other session"]
 const native = {
   base: {
     ...getOpenCodeTheme().base,
@@ -64,6 +64,11 @@ for (const orientation of ["horizontal", "vertical"] as const) {
         // These framebuffer thresholds reject the old sweep's ~6%/3.5% title-background lift.
         expect(gain).toBeGreaterThan(orientation === "horizontal" ? 0.13 : 0.075)
         expect(gain).toBeLessThan(orientation === "horizontal" ? 0.17 : 0.1)
+        if (orientation === "vertical") {
+          // With a three-cell prefix, title character 6 sits at the ten-cell pulse's right clip.
+          expect(samples.every((cells) => cells[6].bg.equals(background))).toBe(true)
+          expect(Math.max(...samples.map((cells) => distance(cells[5].bg, background)))).toBeLessThan(peak / 10)
+        }
         expect(samples[7].map((cell) => cell.bg.toInts())).not.toEqual(samples[11].map((cell) => cell.bg.toInts()))
         expect(samples.flat().every((cell) => cell.fg.equals(foreground))).toBe(true)
         expect(app.captureCharFrame()).toContain(title)

@@ -683,7 +683,11 @@ class TabPulseRenderable extends Renderable {
     const flashTail = this._flashTail === undefined ? undefined : Math.min(this._flashTail, Math.max(1, this.width - 2))
     const outerFlashTail =
       this._outerFlashTail === undefined ? undefined : Math.min(this._outerFlashTail, Math.max(1, this.width - 2))
+    const sweepSpan = Math.max(1, this.width - 1)
     for (let index = 0; index < this.width; index++) {
+      // Keep the left half bright, then feather the running wave before the fixed right clip.
+      const sweepOpacity =
+        running === 0 && outerRunning === 0 ? 0 : RUN_OPACITY * fadeOut(clamp((2 * index) / sweepSpan - 1))
       // Skip per-cell sweep and glow math when that stage is idle, e.g. a steady breathing glow.
       const sweep =
         running === 0
@@ -692,7 +696,7 @@ class TabPulseRenderable extends Renderable {
               intensityAt(index, fronts![0], RUN_HEAD, RUN_TAIL),
               intensityAt(index, fronts![1], RUN_HEAD, RUN_TAIL),
             ) *
-            RUN_OPACITY *
+            sweepOpacity *
             running
       const outerSweep =
         outerRunning === 0
@@ -701,7 +705,7 @@ class TabPulseRenderable extends Renderable {
               intensityAt(index, outerFronts![0], RUN_HEAD, RUN_TAIL),
               intensityAt(index, outerFronts![1], RUN_HEAD, RUN_TAIL),
             ) *
-            RUN_OPACITY *
+            sweepOpacity *
             outerRunning
       blendTabPulseColor(
         this.renderColor,
