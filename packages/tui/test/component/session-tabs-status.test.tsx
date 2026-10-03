@@ -7,7 +7,6 @@ import { ConfigProvider, useConfig, type Info } from "../../src/config"
 import {
   EMPTY_SESSION_TAB_STATUS,
   SessionTabs,
-  TAB_SPINNERS,
   type SessionTabsController,
   type SessionTabsStatus,
 } from "../../src/component/session-tabs"
@@ -27,8 +26,6 @@ import { emptyThemeSource, tmpdir } from "../fixture/fixture"
 import { createApi, createEventStream, createFetch } from "../fixture/tui-client"
 import { TestTuiContexts } from "../fixture/tui-environment"
 import { createTuiResolvedConfig } from "../fixture/tui-runtime"
-import { SESSION_TABS_COMPACT_WIDTH } from "../../src/ui/layout"
-import { stringWidth } from "../../src/util/string-width"
 
 for (const orientation of ["horizontal", "vertical"] as const) {
   test(`${orientation} tabs replace ordinals with status without moving titles and keep context menu actions`, async () => {
@@ -132,7 +129,7 @@ for (const orientation of ["horizontal", "vertical"] as const) {
         .find((line) => line.includes("First"))!
         .indexOf("First")
       const states: { status: Partial<SessionTabsStatus>; label: string }[] = [
-        { status: { busy: true }, label: "▛" },
+        { status: { busy: true }, label: SPINNER_FRAMES[0] },
         { status: { busy: true, attention: "question" }, label: "?" },
         { status: { busy: true, attention: "permission" }, label: "!" },
         { status: { unread: "activity" }, label: "\u2022" },
@@ -209,7 +206,7 @@ for (const orientation of ["horizontal", "vertical"] as const) {
       await config.update((draft) => {
         draft.tabs.indicators = "status"
       })
-      await app.waitForFrame((frame) => frame.includes("▛ First"))
+      await app.waitForFrame((frame) => frame.includes(`${SPINNER_FRAMES[0]} First`))
 
       setStatus(EMPTY_SESSION_TAB_STATUS)
       setActive("second")
@@ -262,120 +259,4 @@ for (const orientation of ["horizontal", "vertical"] as const) {
       app.renderer.destroy()
     }
   })
-}
-
-for (const mode of ["dark", "light"] as const) {
-  for (const layout of ["horizontal", "vertical", "compact"] as const) {
-    test(`${mode} ${layout} running tabs use visible one-cell blocks without shifting layout`, async () => {
-      const [status, setStatus] = createSignal({ ...EMPTY_SESSION_TAB_STATUS, busy: true })
-      const [animations, setAnimations] = createSignal(false)
-      const [indicators, setIndicators] = createSignal<"status" | "numbers">("status")
-      const [active, setActive] = createSignal("second")
-      const [spinner, setSpinner] = createSignal<"dots">()
-      const controller = {
-        tabs: () => [
-          { sessionID: "first", title: "First" },
-          { sessionID: "second", title: "Second" },
-        ],
-        current: active,
-        select: setActive,
-        close() {},
-        move() {},
-        status: (sessionID: string) => (sessionID === "first" ? status() : EMPTY_SESSION_TAB_STATUS),
-      } satisfies SessionTabsController
-      const app = await testRender(
-        () => (
-          <TestTuiContexts>
-            <ConfigProvider config={createTuiResolvedConfig({ tabs: { mode: "on" } })}>
-              <Keymap.Provider>
-                <ThemeProvider mode={mode} source={emptyThemeSource}>
-                  <box width="100%" height="100%" flexDirection="row">
-                    <SessionTabs
-                      controller={controller}
-                      orientation={layout === "horizontal" ? "horizontal" : "vertical"}
-                      width={layout === "compact" ? SESSION_TABS_COMPACT_WIDTH : undefined}
-                      animations={animations()}
-                      indicators={indicators()}
-                      spinner={spinner()}
-                    />
-                  </box>
-                </ThemeProvider>
-              </Keymap.Provider>
-            </ConfigProvider>
-          </TestTuiContexts>
-        ),
-        { width: 60, height: 12 },
-      )
-
-      try {
-        app.renderer.start()
-        await app.waitForFrame((frame) => frame.includes("▛"))
-        const initial = app.captureCharFrame().split("\n")
-        const row = initial.findIndex((line) => line.includes("▛"))
-        const column = initial[row]!.indexOf("▛")
-        const title = initial[row]!.indexOf("First")
-        if (layout === "compact") expect(column).toBe(Math.floor(SESSION_TABS_COMPACT_WIDTH / 2))
-        if (layout !== "compact") expect(title).toBeGreaterThan(column)
-
-        for (const selected of [false, true]) {
-          setAnimations(false)
-          setActive(selected ? "first" : "second")
-          await app.waitForFrame((frame) => frame.includes("▛"))
-          await app.renderOnce()
-          const color = app
-            .captureSpans()
-            .lines[row]!.spans.find((span) => span.text.trim() === "▛")!
-            .fg.toInts()
-          setSpinner("dots")
-          await app.waitForFrame((frame) => frame.includes(SPINNER_FRAMES[0]))
-          expect(
-            app
-              .captureSpans()
-              .lines[row]!.spans.find((span) => span.text.trim() === SPINNER_FRAMES[0])!
-              .fg.toInts(),
-          ).toEqual(color)
-          setSpinner(undefined)
-          setAnimations(true)
-
-          for (const glyph of TAB_SPINNERS.blocks.frames) {
-            expect(stringWidth(glyph)).toBe(1)
-            await app.waitForFrame((frame) => frame.split("\n")[row]?.includes(glyph) === true)
-            const line = app.captureCharFrame().split("\n")[row]!
-            expect(line.indexOf(glyph)).toBe(column)
-            expect(line.indexOf("First")).toBe(title)
-            const span = app.captureSpans().lines[row]!.spans.find((span) => span.text.trim() === glyph)!
-            expect(span.width).toBe(1)
-          }
-        }
-
-        for (const attention of ["question", "permission"] as const) {
-          setStatus({ ...EMPTY_SESSION_TAB_STATUS, busy: true, attention })
-          await app.waitForFrame((frame) => frame.includes(attention === "question" ? "?" : "!"))
-          expect(TAB_SPINNERS.blocks.frames.some((glyph) => app.captureCharFrame().includes(glyph))).toBe(false)
-        }
-
-        setStatus({ ...EMPTY_SESSION_TAB_STATUS, busy: true })
-        setIndicators("numbers")
-        await app.waitForFrame((frame) => frame.split("\n")[row]?.includes("1") === true)
-        expect(TAB_SPINNERS.blocks.frames.some((glyph) => app.captureCharFrame().includes(glyph))).toBe(false)
-
-        setIndicators("status")
-        setAnimations(false)
-        await app.waitForFrame((frame) => frame.includes("▛"))
-        await app.renderOnce()
-        expect(app.captureCharFrame().split("\n")[row]![column]).toBe("▛")
-
-        setSpinner("dots")
-        await app.waitForFrame((frame) => frame.includes(SPINNER_FRAMES[0]))
-        setSpinner(undefined)
-        setStatus(EMPTY_SESSION_TAB_STATUS)
-        await app.waitForFrame((frame) => !frame.includes(SPINNER_FRAMES[0]) && !frame.includes("▛"))
-        const idle = app.captureCharFrame().split("\n")[row]!
-        expect(idle.indexOf("First")).toBe(title)
-        if (layout === "compact") expect(idle[column]).toBe("F")
-      } finally {
-        app.renderer.destroy()
-      }
-    })
-  }
 }

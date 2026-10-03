@@ -57,8 +57,6 @@ import "./title-shimmer"
 registerOpencodeSpinner()
 
 export const TAB_SPINNERS = {
-  // Keep most of the cell filled so running tabs remain visible between frames.
-  blocks: { frames: ["▛", "▜", "▟", "▙"], interval: 160 },
   dots: { frames: SPINNER_FRAMES, interval: 80 },
   arcs: { frames: ["◜", "◝", "◞", "◟"], interval: 120 },
   quadrants: { frames: ["◴", "◷", "◶", "◵"], interval: 120 },
@@ -172,7 +170,7 @@ function TabIndicator(props: {
     const flash = Math.max(0, 1 - Math.abs(opacity - 0.8) / 0.2)
     return tint(props.backgroundColor, tint(unreadColor(), props.flashColor, flash * 0.3), Math.min(1, opacity / 0.8))
   }
-  const spinner = () => TAB_SPINNERS[props.spinner ?? "blocks"]
+  const spinner = () => TAB_SPINNERS[props.spinner ?? "dots"]
   const label = () => {
     if (props.numbers) return props.label
     if (props.status.attention === "permission") return "!"
