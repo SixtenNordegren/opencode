@@ -35,6 +35,7 @@ const RUN_DURATION = 2_800
 const RUN_ATTACK = 450
 const RUN_HEAD = 4
 const RUN_TAIL = 18
+const RUN_OPACITY = 0.35
 const RUN_FADE_OUT = 500
 const COMPLETION_DURATION = 1_200
 const COMPLETION_ATTACK = 0.12
@@ -691,7 +692,7 @@ class TabPulseRenderable extends Renderable {
               intensityAt(index, fronts![0], RUN_HEAD, RUN_TAIL),
               intensityAt(index, fronts![1], RUN_HEAD, RUN_TAIL),
             ) *
-            0.14 *
+            RUN_OPACITY *
             running
       const outerSweep =
         outerRunning === 0
@@ -700,7 +701,7 @@ class TabPulseRenderable extends Renderable {
               intensityAt(index, outerFronts![0], RUN_HEAD, RUN_TAIL),
               intensityAt(index, outerFronts![1], RUN_HEAD, RUN_TAIL),
             ) *
-            0.14 *
+            RUN_OPACITY *
             outerRunning
       blendTabPulseColor(
         this.renderColor,
