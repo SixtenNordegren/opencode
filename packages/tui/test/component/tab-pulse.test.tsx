@@ -78,7 +78,90 @@ for (const edge of [undefined, "above", "below"] as const) {
       expect(next.indexOf(Math.max(...next))).toBeGreaterThan(gain.indexOf(Math.max(...gain)))
     }
   })
+
+  for (const width of [10, 32]) {
+    test(`the ${width}-cell ${edge ?? "background"} sweep fades before its right clip without dimming the left`, async () => {
+      const background = RGBA.fromHex("#101010")
+      const color = RGBA.fromHex("#f0f0f0")
+      const outerColor = RGBA.fromHex("#a06020")
+      using app = await fixture(
+        () => (
+          <box width="100%" backgroundColor={background}>
+            <TabPulse
+              active
+              edge={edge}
+              color={color}
+              outerColor={outerColor}
+              flashColor={background}
+              backgroundColor={background}
+            />
+          </box>
+        ),
+        width,
+      )
+
+      await app.renderOnce()
+      await app.step(100)
+      const frames = [app.cells()]
+      for (const millis of Array.from({ length: 59 }, () => 100)) {
+        await app.step(millis)
+        frames.push(app.cells())
+      }
+      for (const channel of edge ? (["fg", "bg"] as const) : (["bg"] as const)) {
+        const target = edge && channel === "bg" ? outerColor : color
+        const peak = (index: number) =>
+          Math.max(...frames.map((cells) => (cells[index][channel].r - background.r) / (target.r - background.r)))
+        expect(peak(1)).toBeGreaterThan(0.34)
+        expect(peak(Math.floor(width / 2) - 1)).toBeGreaterThan(0.34)
+        expect(peak(Math.floor((width - 1) * 0.75))).toBeGreaterThan(0.1)
+        expect(peak(Math.floor((width - 1) * 0.75))).toBeLessThan(0.32)
+        expect(peak(width - 2)).toBeLessThan(0.04)
+        // Include multiple complete sweeps and their wraparound, not just one quiet frame.
+        expect(frames.every((cells) => cells[width - 1][channel].equals(background))).toBe(true)
+      }
+    })
+  }
 }
+
+test("an outer-only running sweep keeps its bright left and feathers its right half", async () => {
+  const background = RGBA.fromHex("#101010")
+  const color = RGBA.fromHex("#f0f0f0")
+  using app = await fixture(
+    () => (
+      <TabPulse
+        active={false}
+        outerActive
+        edge="above"
+        color={color}
+        flashColor={background}
+        backgroundColor={background}
+      />
+    ),
+    10,
+  )
+  await app.renderOnce()
+  await app.step(700)
+  const cells = app.cells()
+  expect(cells.every((cell) => cell.fg.equals(background))).toBe(true)
+  expect((cells[1].bg.r - background.r) / (color.r - background.r)).toBeGreaterThan(0.34)
+  await app.step(500)
+  expect(app.cells().at(-1)!.bg.equals(background)).toBe(true)
+})
+
+test("a shrinking sweep stays visible at one cell and fades the last of two cells", async () => {
+  const background = RGBA.fromHex("#101010")
+  const color = RGBA.fromHex("#f0f0f0")
+  for (const width of [1, 2]) {
+    using app = await fixture(
+      () => <TabPulse active color={color} flashColor={background} backgroundColor={background} />,
+      width,
+    )
+    await app.renderOnce()
+    await app.step(700)
+    expect((app.cells()[0].bg.r - background.r) / (color.r - background.r)).toBeCloseTo(0.35, 2)
+    if (width === 2) expect(app.cells()[1].bg.equals(background)).toBe(true)
+  }
+})
 
 test("running level remains unscaled and quantized, then returns to an idle background", async () => {
   const background = RGBA.fromHex("#101010")
@@ -114,9 +197,9 @@ test("running level remains unscaled and quantized, then returns to an idle back
   expect(app.cells().every((cell) => cell.bg.equals(background))).toBe(true)
 })
 
-async function fixture(view: () => JSX.Element) {
+async function fixture(view: () => JSX.Element, width = 32) {
   const clock = new ManualClock()
-  const app = await testRender(view, { width: 32, height: 1, useThread: false, clock })
+  const app = await testRender(view, { width, height: 1, useThread: false, clock })
   app.renderer.pause()
   const renderOnce = async () => {
     await app.waitFor(() => !app.renderer.getSchedulerState().isRendering)
