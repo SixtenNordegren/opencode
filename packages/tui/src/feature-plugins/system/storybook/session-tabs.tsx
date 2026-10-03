@@ -91,7 +91,7 @@ function SessionTabsStory(props: { context: Plugin.Context }) {
   const [indicators, setIndicators] = createSignal<"status" | "numbers">("status")
   const railCompact = () => resize.size() < SESSION_TABS_COMPACT_BREAKPOINT
   const spinners = Object.keys(TAB_SPINNERS) as TabSpinner[]
-  const [spinner, setSpinner] = createSignal<TabSpinner>("dots")
+  const [spinner, setSpinner] = createSignal<TabSpinner>("blocks")
   const markers = Object.keys(TAB_UNREAD_MARKERS) as TabUnreadMarker[]
   const [marker, setMarker] = createSignal<TabUnreadMarker>("small-dot")
   const [animations, setAnimations] = createSignal(true)
@@ -317,7 +317,7 @@ function SessionTabsStory(props: { context: Plugin.Context }) {
       setStatuses(showcase ? FIXTURE_STATUSES : {})
       setOutcomes(showcase ? FIXTURE_OUTCOMES : {})
       setActive("fixture-1")
-      setSpinner("dots")
+      setSpinner("blocks")
       setMarker("small-dot")
       setAnimations(true)
       setOrientation("vertical")
